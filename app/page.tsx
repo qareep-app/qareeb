@@ -1,78 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { createClient } from '../lib/supabase'
 import CategoryBar from '../components/CategoryBar'
-
-const categories = [
-  {
-    name: 'الرئيسية',
-    icon: '🏠',
-    slug: '',
-    subs: [],
-  },
-  {
-    name: 'سيارات وموتسيكلات',
-    icon: '🚗',
-    slug: 'سيارات',
-    subs: ['الكل', 'تويوتا', 'هيونداي', 'نيسان', 'كيا', 'شيفروليه', 'مرسيدس', 'BMW', 'أودي', 'رينو', 'بيجو'],
-  },
-  {
-    name: 'قطع غيار وزيوت',
-    icon: '🔧',
-    slug: 'قطع-غيار',
-    subs: ['الكل', 'زيوت', 'فلاتر', 'إطارات', 'بطاريات', 'فرامل'],
-  },
-  {
-    name: 'أجهزة كهربائية',
-    icon: '🔌',
-    slug: 'أجهزة',
-    subs: ['الكل', 'ثلاجات', 'غسالات', 'تكييفات', 'شاشات', 'ميكروويف'],
-  },
-  {
-    name: 'عقارات',
-    icon: '🏢',
-    slug: 'عقارات',
-    subs: ['الكل', 'شقق للبيع', 'شقق للإيجار', 'فلل', 'أراضي', 'محلات'],
-  },
-  {
-    name: 'موبايلات وتابلت',
-    icon: '📱',
-    slug: 'موبايلات',
-    subs: ['الكل', 'Apple', 'Samsung', 'Xiaomi', 'Oppo', 'Huawei', 'Realme'],
-  },
-  {
-    name: 'أثاث ومفروشات',
-    icon: '🛋️',
-    slug: 'أثاث',
-    subs: ['الكل', 'غرف نوم', 'صالة', 'مطبخ', 'مكاتب'],
-  },
-  {
-    name: 'ملابس وأحذية',
-    icon: '👕',
-    slug: 'ملابس',
-    subs: ['الكل', 'رجالي', 'حريمي', 'أطفال', 'أحذية'],
-  },
-  {
-    name: 'حيوانات أليفة',
-    icon: '🐾',
-    slug: 'حيوانات',
-    subs: ['الكل', 'قطط', 'كلاب', 'طيور', 'مستلزمات'],
-  },
-  {
-    name: 'وظائف وخدمات',
-    icon: '💼',
-    slug: 'وظائف',
-    subs: ['الكل', 'وظائف', 'خدمات منزلية', 'صيانة', 'نقل'],
-  },
-  {
-    name: 'أخرى',
-    icon: '📦',
-    slug: 'أخرى',
-    subs: ['الكل'],
-  },
-]
 
 type Ad = {
   id: number
@@ -80,6 +11,7 @@ type Ad = {
   price: number
   governorate: string
   area: string | null
+  images?: string[] | null
 }
 
 export default function Home() {
@@ -89,7 +21,7 @@ export default function Home() {
   useEffect(() => {
     supabase
       .from('ads')
-      .select('id, title, price, governorate, area')
+      .select('id, title, price, governorate, area, images')
       .order('created_at', { ascending: false })
       .limit(8)
       .then(({ data }) => setAds((data as Ad[]) || []))
@@ -97,7 +29,6 @@ export default function Home() {
 
   return (
     <main className="bg-[#f7faf8] text-slate-800 pb-24 md:pb-0" dir="rtl">
-      {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 py-8 md:py-12 grid md:grid-cols-2 gap-8 items-center">
         <div className="order-2 md:order-1 text-center md:text-right">
           <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 leading-snug mb-4">
@@ -122,22 +53,22 @@ export default function Home() {
         </div>
       </section>
 
-{/* Categories toolbar */}
-<section className="max-w-6xl mx-auto px-4 pb-6">
-  <CategoryBar />
-</section>
+      <section className="max-w-6xl mx-auto px-4 pb-6">
+        <Suspense fallback={<div className="h-24 bg-white rounded-2xl animate-pulse" />}>
+          <CategoryBar />
+        </Suspense>
+      </section>
 
-      {/* Features */}
       <section className="max-w-6xl mx-auto px-4 pb-10 grid md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 p-6 text-center">
           <div className="text-3xl mb-2">🛡️</div>
           <h3 className="font-extrabold mb-1">آمن وموثوق</h3>
-          <p className="text-sm text-slate-500">تواصل مباشر مع البائعين</p>
+          <p className="text-sm text-slate-500">تواصل داخل قريب فقط</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-100 p-6 text-center">
           <div className="text-3xl mb-2">📍</div>
           <h3 className="font-extrabold mb-1">قريب منك</h3>
-          <p className="text-sm text-slate-500">إعلانات في حيك والمدن القريبة</p>
+          <p className="text-sm text-slate-500">إعلانات في حيك</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-100 p-6 text-center">
           <div className="text-3xl mb-2">💰</div>
@@ -146,7 +77,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Latest ads */}
       <section className="max-w-6xl mx-auto px-4 pb-10">
         <div className="flex items-center justify-between mb-5">
           <Link href="/ads" className="text-sm font-bold text-[#005c45]">عرض الكل</Link>
@@ -163,7 +93,11 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {ads.map((ad) => (
               <Link key={ad.id} href={'/ads/' + ad.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                <div className="h-32 bg-[#eef5f1] flex items-center justify-center text-slate-400 text-xs">لا صورة</div>
+                {ad.images && ad.images[0] ? (
+                  <img src={ad.images[0]} alt={ad.title} className="h-32 w-full object-cover" />
+                ) : (
+                  <div className="h-32 bg-[#eef5f1] flex items-center justify-center text-slate-400 text-xs">لا صورة</div>
+                )}
                 <div className="p-3">
                   <p className="text-[#005c45] font-extrabold">{Number(ad.price).toLocaleString()} ج.م</p>
                   <h3 className="font-bold text-sm">{ad.title}</h3>
@@ -175,7 +109,6 @@ export default function Home() {
         )}
       </section>
 
-      {/* Green CTA with icon */}
       <section className="max-w-6xl mx-auto px-4 pb-12">
         <div className="rounded-3xl bg-[#005c45] text-white p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-right">
@@ -191,7 +124,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-white border-t border-slate-100 pt-10 pb-24 md:pb-10" dir="rtl">
         <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
           <div>
