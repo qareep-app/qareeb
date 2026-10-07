@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { createClient } from '../lib/supabase'
 import CategoryBar from '../components/CategoryBar'
 
+export const dynamic = 'force-dynamic'
+
 type Ad = {
   id: number
   title: string
