@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 const categories = [
   { name: 'الرئيسية', icon: '🏠', slug: '', subs: [] as string[] },
@@ -62,12 +62,37 @@ const categories = [
   { name: 'أخرى', icon: '📦', slug: 'أخرى', subs: ['الكل'] },
 ]
 
+const governorates = [
+  'الكل', 'القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الشرقية',
+  'القليوبية', 'الغربية', 'المنوفية', 'البحيرة', 'أسيوط',
+  'سوهاج', 'قنا', 'الأقصر', 'أسوان',
+]
+
 export default function CategoryBar() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [active, setActive] = useState(0)
   const [sub, setSub] = useState('الكل')
+  const [showGov, setShowGov] = useState(false)
+
+  const currentGov = searchParams.get('gov') || 'الكل'
+  const sort = searchParams.get('sort') || ''
 
   const current = categories[active]
+
+  function go(params: Record<string, string>) {
+    const q = new URLSearchParams()
+    const cat = params.cat ?? searchParams.get('cat') ?? ''
+    const brand = params.brand ?? searchParams.get('brand') ?? ''
+    const gov = params.gov ?? searchParams.get('gov') ?? ''
+    const s = params.sort ?? searchParams.get('sort') ?? ''
+    if (cat) q.set('cat', cat)
+    if (brand && brand !== 'الكل') q.set('brand', brand)
+    if (gov && gov !== 'الكل') q.set('gov', gov)
+    if (s) q.set('sort', s)
+    const qs = q.toString()
+    router.push(qs ? '/ads?' + qs : '/ads')
+  }
 
   function selectCategory(index: number) {
     setActive(index)
@@ -77,32 +102,93 @@ export default function CategoryBar() {
       router.push('/')
       return
     }
-    router.push('/ads?cat=' + encodeURIComponent(cat.slug))
+    go({ cat: cat.slug, brand: '' })
   }
 
   function selectSub(s: string) {
     setSub(s)
     const cat = categories[active]
     if (!cat.slug) return
-    if (s === 'الكل') {
-      router.push('/ads?cat=' + encodeURIComponent(cat.slug))
-    } else {
-      router.push(
-        '/ads?cat=' + encodeURIComponent(cat.slug) + '&brand=' + encodeURIComponent(s)
-      )
+    go({ cat: cat.slug, brand: s === 'الكل' ? '' : s })
+  }
+
+  function selectGov(g: string) {
+    setShowGov(false)
+    go({ gov: g === 'الكل' ? '' : g })
+  }
+
+  function selectSort(s: string) {
+    go({ sort: s })
+  }
+
+  function nearMe() {
+    if (!navigator.geolocation) {
+      alert('المتصفح لا يدعم تحديد الموقع')
+      return
     }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const q = new URLSearchParams(searchParams.toString())
+        q.set('sort', 'near')
+        q.set('lat', String(pos.coords.latitude))
+        q.set('lng', String(pos.coords.longitude))
+        router.push('/ads?' + q.toString())
+      },
+      () => alert('اسمح بالوصول للموقع من المتصفح')
+    )
   }
 
   return (
     <div dir="rtl">
-      <div className="flex items-center justify-end gap-2 mb-3 flex-wrap">
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-600">
-          المنطقة ▼
-        </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-600">
+      <div className="flex items-center justify-end gap-2 mb-3 flex-wrap relative">
+        <div className="relative">
+          <button
+            onClick={() => setShowGov(!showGov)}
+            className={
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold ' +
+              (currentGov !== 'الكل'
+                ? 'bg-[#005c45] text-white border-[#005c45]'
+                : 'bg-white text-slate-600 border-slate-200')
+            }
+          >
+            المنطقة {currentGov !== 'الكل' ? '· ' + currentGov : ''} ▼
+          </button>
+          {showGov && (
+            <div className="absolute left-0 top-full mt-1 bg-white border border-slate-100 rounded-xl shadow-lg z-20 max-h-60 overflow-y-auto min-w-[140px]">
+              {governorates.map((g) => (
+                <button
+                  key={g}
+                  onClick={() => selectGov(g)}
+                  className="block w-full text-right px-4 py-2 text-xs hover:bg-slate-50 font-bold"
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={nearMe}
+          className={
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold ' +
+            (sort === 'near'
+              ? 'bg-[#005c45] text-white border-[#005c45]'
+              : 'bg-white text-slate-600 border-slate-200')
+          }
+        >
           القريب
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-600">
+
+        <button
+          onClick={() => selectSort('new')}
+          className={
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold ' +
+            (sort === 'new' || !sort
+              ? 'bg-[#005c45] text-white border-[#005c45]'
+              : 'bg-white text-slate-600 border-slate-200')
+          }
+        >
           جديد
         </button>
       </div>
@@ -132,7 +218,7 @@ export default function CategoryBar() {
               key={s}
               onClick={() => selectSub(s)}
               className={
-                'px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border transition ' +
+                'px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap border ' +
                 (sub === s
                   ? 'bg-[#005c45] text-white border-[#005c45]'
                   : 'bg-white text-slate-600 border-slate-200')

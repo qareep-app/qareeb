@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '../../lib/supabase'
 
+import CategoryBar from '../../components/CategoryBar'
+
 type Ad = {
   id: number
   title: string
@@ -14,25 +16,43 @@ type Ad = {
   governorate: string
   area: string | null
   images?: string[] | null
+  latitude?: number | null
+  longitude?: number | null
+  created_at?: string
+}
+
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
 function AdsContent() {
   const [ads, setAds] = useState<Ad[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('')
   const searchParams = useSearchParams()
   const supabase = createClient()
 
-  useEffect(() => {
-    const cat = searchParams.get('cat') || ''
-    if (cat) setCategory(cat)
+  const cat = searchParams.get('cat') || ''
+  const brand = searchParams.get('brand') || ''
+  const gov = searchParams.get('gov') || ''
+  const sort = searchParams.get('sort') || 'new'
+  const lat = parseFloat(searchParams.get('lat') || '')
+  const lng = parseFloat(searchParams.get('lng') || '')
 
+  useEffect(() => {
     async function load() {
       setLoading(true)
       const { data, error } = await supabase
         .from('ads')
-        .select('id, title, description, price, category, governorate, area, images')
+        .select('id, title, description, price, category, governorate, area, images, latitude, longitude, created_at')
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -46,8 +66,10 @@ function AdsContent() {
     load()
   }, [searchParams])
 
-  const filtered = ads.filter((ad) => {
-    if (category && !(ad.category || '').includes(category)) return false
+  let filtered = ads.filter((ad) => {
+    if (cat && !(ad.category || '').includes(cat)) return false
+    if (brand && !(ad.title || '').includes(brand) && !(ad.description || '').includes(brand)) return false
+    if (gov && ad.governorate !== gov) return false
     if (
       search &&
       !(ad.title || '').toLowerCase().includes(search.toLowerCase()) &&
@@ -58,46 +80,47 @@ function AdsContent() {
     return true
   })
 
+  if (sort === 'near' && !isNaN(lat) && !isNaN(lng)) {
+    filtered = [...filtered].sort((a, b) => {
+      const da =
+        a.latitude != null && a.longitude != null
+          ? distanceKm(lat, lng, a.latitude, a.longitude)
+          : 99999
+      const db =
+        b.latitude != null && b.longitude != null
+          ? distanceKm(lat, lng, b.latitude, b.longitude)
+          : 99999
+      return da - db
+    })
+  }
+
   return (
     <main className="min-h-screen bg-[#fafaf7] text-slate-800 pb-24 md:pb-8" dir="rtl">
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-extrabold mb-5 text-[#005c45]">كل الإعلانات</h1>
+        <h1 className="text-2xl font-extrabold mb-2 text-[#005c45]">كل الإعلانات</h1>
+        <p className="text-xs text-slate-500 mb-5">
+        <div className="mb-6">
+        <CategoryBar />
+</div>
+          {cat && <span>فئة: {cat} · </span>}
+          {gov && <span>منطقة: {gov} · </span>}
+          {sort === 'near' ? 'الأقرب لك' : 'الأحدث'}
+        </p>
 
-        <div className="flex flex-wrap gap-3 mb-6">
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm"
-          >
-            <option value="">كل الفئات</option>
-            <option value="موبايلات">موبايلات وتابلت</option>
-            <option value="عقارات">عقارات</option>
-            <option value="سيارات">سيارات وموتسيكلات</option>
-            <option value="ملابس">ملابس وأحذية</option>
-            <option value="أثاث">أثاث ومفروشات</option>
-            <option value="أجهزة">أجهزة كهربائية</option>
-            <option value="وظائف">وظائف وخدمات</option>
-            <option value="حيوانات">حيوانات أليفة</option>
-            <option value="أخرى">أخرى</option>
-          </select>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="ابحث..."
-            className="flex-1 min-w-[160px] px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm"
-          />
-        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="ابحث..."
+          className="w-full mb-6 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm"
+        />
 
         {loading ? (
           <p className="text-center text-slate-400 py-16">جاري التحميل...</p>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-slate-500">
-            <h3 className="text-lg font-bold text-slate-700 mb-2">مفيش إعلانات حالياً</h3>
-            <Link
-              href="/add"
-              className="inline-block bg-[#005c45] text-white px-5 py-2.5 rounded-xl font-bold text-sm"
-            >
+            <h3 className="text-lg font-bold mb-2">مفيش إعلانات حالياً</h3>
+            <Link href="/add" className="inline-block bg-[#005c45] text-white px-5 py-2.5 rounded-xl font-bold text-sm">
               + أضف إعلانك
             </Link>
           </div>
@@ -110,11 +133,7 @@ function AdsContent() {
                 className="bg-white border border-slate-100 rounded-2xl overflow-hidden hover:border-[#005c45] transition block"
               >
                 {ad.images && ad.images[0] ? (
-                  <img
-                    src={ad.images[0]}
-                    alt={ad.title}
-                    className="h-40 w-full object-cover"
-                  />
+                  <img src={ad.images[0]} alt={ad.title} className="h-40 w-full object-cover" />
                 ) : (
                   <div className="h-40 bg-[#eef5f1] flex items-center justify-center text-slate-400 text-sm">
                     لا توجد صورة
