@@ -1,23 +1,14 @@
 import type { Metadata } from 'next'
-import { Cairo } from 'next/font/google'
 import './globals.css'
 import Navbar from '../components/Navbar'
-import Splash from '../components/Splash'
-
-const cairo = Cairo({
-  subsets: ['arabic', 'latin'],
-  weight: ['400', '600', '700', '800'],
-  variable: '--font-cairo',
-})
 
 export const metadata: Metadata = {
   title: 'قريب | دكانك قريب',
-  description: 'سوق مصري محلي يربطك بالبائعين والمحلات القريبة منك مباشرة',
+  description: 'بيع واشتري من الناس اللي حواليك',
   icons: {
     icon: '/icon.png',
     apple: '/apple-icon.png',
   },
-  manifest: '/manifest.json',
 }
 
 export default function RootLayout({
@@ -26,12 +17,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ar" dir="rtl" className={`${cairo.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-[#fafaf7] font-sans antialiased pb-20 md:pb-0">
-        <Splash>
-          <Navbar />
-          <div className="flex-1">{children}</div>
-        </Splash>
+    <html lang="ar" dir="rtl">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen flex flex-col antialiased" style={{ fontFamily: 'Cairo, sans-serif' }}>
+        <Navbar />
+        <div className="flex-1">{children}</div>
       </body>
     </html>
   )
